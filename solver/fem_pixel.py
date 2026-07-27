@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+@author: akilinc
+
 fem_pixel.py  –  Pure-Python FEM replacing Abaqus (Case 5 / Case 6)
 ====================================================================
 Element  : CPS4, plane stress, 2x2 Gauss
