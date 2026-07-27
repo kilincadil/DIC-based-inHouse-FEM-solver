@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+@author: akilinc
+
 seam_metrics.py – interface equilibrium residual for domain-decomposed FE
 (the diagnostic used to calibrate how much overlap padding a partitioned /
 tiled solve needs before stitching independently-solved tiles back together).
