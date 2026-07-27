@@ -160,13 +160,13 @@ class MaterialInserter:
 
         with open(self.file_path, 'a') as f:
             # Write material data
-            E_p = np.linspace(0.0, 0.005, 20)
+            E_p = np.linspace(0.0, 0.2, 20)
             for set_id, mean_stresses in stress_flow.items():
                 ID = set_id.split('_')[1]
                 f.write("** MATERIALS\n")
                 f.write(f"*Material, name=Material-{ID}\n")
                 f.write("*Elastic\n")
-                f.write("205000, 0.25\n")
+                f.write("205000, 0.3\n")
                 f.write("*Plastic\n")
                 for k, stress_value in enumerate(mean_stresses):
                     f.write(f"{stress_value}, {E_p[k]}\n")
