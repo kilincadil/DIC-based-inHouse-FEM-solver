@@ -1,65 +1,71 @@
 # DIC-based in-house FEM
 
-Turning measured DIC kinematics into a mechanically admissible stress and strain
-field.
+Finite-element reconstruction of stress and strain fields from digital image
+correlation (DIC) measurements.
 
-Digital image correlation gives displacements on the surface of a specimen.
-Differentiating them yields a strain estimate — but one that satisfies neither
-equilibrium nor any constitutive law, and that amplifies measurement noise. This
-repository instead poses a boundary-value problem: measured displacements are
-prescribed on the boundary, and the interior is solved so that compatibility,
-the material law and force balance all hold at once.
+DIC measures displacements on a specimen surface. Differentiating those
+displacements gives a strain estimate, but that estimate enforces neither
+equilibrium nor a constitutive law, and differentiation amplifies measurement
+noise. This repository takes a different route: the measured displacements are
+imposed as boundary conditions on a finite-element model, and the interior
+fields are computed from equilibrium and the material law. The output satisfies
+compatibility, the constitutive relation and force balance simultaneously. It is
+a mechanical solution driven by measurement, not a filtered version of the
+measurement.
 
-The result is not a smoothed measurement. It is a field constrained
-simultaneously by kinematics, material behaviour and equilibrium.
+## Two implementations
 
-The same problem can be solved two ways, which is the point of the repository:
+The same boundary-value problem is solved along two independent paths.
 
-- **In Abaqus**, by generating an input file where every pixel becomes an
-  element carrying its own measured material properties.
-- **In the in-house solver**, which takes identical inputs directly in Python
-  and needs no external solver and no licence.
+**Abaqus.** `abaqus/` writes an input file in which each DIC pixel becomes one
+element carrying its own measured material properties, and extracts the results
+from the resulting ODB onto a regular grid.
 
-The second was written against the first, so the Abaqus path is kept as the
-reference oracle rather than as a historical artefact.
+**In-house solver.** `solver/fem_pixel.py` accepts the same inputs directly in
+Python and solves the problem in-process, without Abaqus and without a
+commercial licence.
+
+The in-house solver was developed and validated against the Abaqus path. The
+Abaqus scripts are maintained as the reference implementation against which the
+solver is checked, not retained for historical reasons.
 
 ## Layout
 
 | Folder | Contents |
 |---|---|
-| `solver/` | The in-house FEM solver (`fem_pixel.py`) and its tiling diagnostic (`seam_metrics.py`). |
-| `abaqus/` | Current Abaqus pipeline: `.inp` generation and ODB extraction back onto a grid. |
-| `legacy/` | The original DIC-to-Abaqus mesh generators, micro- and mesoscale, kept as first published. |
-| `docs/` | Full documentation, built with Sphinx. |
+| `solver/` | In-house FEM solver (`fem_pixel.py`) and the tiling diagnostic (`seam_metrics.py`). |
+| `abaqus/` | Abaqus pipeline: `.inp` generation and ODB extraction onto a regular grid. |
+| `legacy/` | Original DIC-to-Abaqus mesh generators, microscale and mesoscale, as first published. |
+| `docs/` | Sphinx documentation sources. |
 
-## The model
+## Model
 
-Both paths solve the same problem:
+Both paths solve an identical problem.
 
-- **Element** — CPS4, plane stress, 2x2 Gauss quadrature, one element per pixel
-- **Kinematics** — small strain
-- **Elasticity** — isotropic, E = 205 000 MPa, nu = 0.3
-- **Plasticity** — associative von Mises with Ludwik hardening,
-  `sy(ep) = sy0 + K * ep^n`
-- **Heterogeneity** — `sy0` and `K` vary element by element, so a measured
-  per-pixel material map is carried directly into the model
-- **Boundary conditions** — measured displacements prescribed at every node of
-  all four edges; the interior is unknown and solved for
+| | |
+|---|---|
+| Element | CPS4, plane stress, 2x2 Gauss quadrature, one element per pixel |
+| Kinematics | Small strain |
+| Elasticity | Isotropic, E = 205 000 MPa, nu = 0.3 |
+| Plasticity | Associative von Mises, Ludwik hardening `sy(ep) = sy0 + K*ep^n` |
+| Heterogeneity | `sy0` and `K` vary element by element, carrying a measured per-pixel material map into the model |
+| Boundary conditions | Measured displacements prescribed at every node of all four edges; interior displacements unknown |
 
-The in-house solver uses an analytical consistent tangent — closed-form return
-mapping plus the consistent tangent operator for plane-stress von Mises — with
-Newton-Raphson, automatic increment cutback, and a factorized elastic stiffness
-reused for the elastic predictor.
+The in-house solver integrates the constitutive law with a closed-form return
+mapping and the corresponding analytical consistent tangent for plane-stress von
+Mises plasticity. Global iterations use Newton-Raphson with automatic increment
+cutback on non-convergence. The elastic stiffness is factorized once and reused
+for each elastic predictor.
 
-## Install
+## Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
 NumPy and SciPy are the only requirements. `pypardiso` is optional and gives a
-large speed-up on bigger meshes. The scripts in `abaqus/` additionally need an
-Abaqus/Standard installation; the solver does not.
+substantial speed-up on larger meshes. The scripts in `abaqus/` additionally
+require an Abaqus/Standard installation; the in-house solver does not.
 
 ## Quick start
 
@@ -85,31 +91,35 @@ result = run_fem(
 # result['S'], ['E'], ['PEEQ'], ['U'], ['RF']
 ```
 
-Run the solver directly for a self-contained correctness check against a
-closed-form equal-biaxial solution:
+The scripts are plain modules rather than an installed package. Run them from
+inside their folder, or add that folder to `sys.path`.
+
+Executing the solver directly runs a verification case — equal-biaxial tension,
+which has a closed-form solution — and reports the error against it:
 
 ```bash
 cd solver && python fem_pixel.py
 ```
 
-The scripts are plain modules rather than an installed package, so run them from
-inside their folder or add it to `sys.path`.
+## Interpretation and limitations
 
-## Scope of the results
+The per-element maps `sy0(x, y)` and `K(x, y)` are identified from the same test
+that the model reconstructs. They describe the local response effectively but
+are not independently measured grain properties. Two consequences follow.
 
-The reconstructed field belongs to an experiment that has already happened. The
-material maps are derived from that same experiment, so they are *effective
-descriptors* rather than independently identified grain properties — which makes
-this a reconstruction, not a forward prediction.
+The computed fields reconstruct one specific test. Predicting a different test
+would require material descriptors identified independently of it, or a
+microstructure-based constitutive model with transferable parameters.
 
-When comparing against DIC, keep total strain and PEEQ separate: the former has
-a direct experimental counterpart, the latter is a path-dependent internal
-variable of the model with no measured equivalent.
+Total strain and PEEQ must be compared on different terms. Total strain has a
+direct experimental counterpart in the DIC field. PEEQ is a path-dependent
+internal variable of the constitutive model with no measured equivalent, and
+should be read as a model diagnostic rather than as a measurement.
 
 ## Documentation
 
-Full documentation is in `docs/`, built with Sphinx and published via Read the
-Docs. To build it locally:
+Sources are in `docs/`, built with Sphinx and published through Read the Docs.
+To build locally:
 
 ```bash
 pip install -r docs/requirements.txt
@@ -118,7 +128,7 @@ sphinx-build -b html docs docs/_build/html
 
 ## Licence
 
-GNU Lesser General Public License v2.1 — see [`LICENSE`](LICENSE).
+GNU Lesser General Public License v2.1. See [`LICENSE`](LICENSE).
 
 ## References
 
