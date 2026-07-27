@@ -232,7 +232,7 @@ class MaterialInserter:
         """
         Inserts material properties and boundary conditions into the Abaqus input file.
         """
-        E_p = np.linspace(0.0, 0.005, 20)  # Plastic strain values
+        E_p = np.linspace(0.0, 0.2, 20)  # Plastic strain values
         num_x, num_y = self.stress_field.shape[1], self.stress_field.shape[2]
         material_data_lines = []
 
@@ -245,7 +245,7 @@ class MaterialInserter:
                 material_data_lines.append("** MATERIALS\n")
                 material_data_lines.append(f"*Material, name=Material-{element_id}\n")
                 material_data_lines.append("*Elastic\n")
-                material_data_lines.append("205000., 0.25\n")  # Young's modulus and Poisson's ratio
+                material_data_lines.append("205000., 0.3\n")  # Young's modulus and Poisson's ratio
                 material_data_lines.append("*Plastic\n")
 
                 stress_str = "\n".join([f"{stress_values[k]:.6f}, {E_p[k]:.6f}"
