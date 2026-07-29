@@ -33,6 +33,7 @@ solver is checked, not retained for historical reasons.
 
 | Folder | Contents |
 |---|---|
+| `dic_analysis/` | DIC displacement fields, and the per-pixel yield stress and hardening maps derived from them. |
 | `solver/` | In-house FEM solver (`fem_pixel.py`) and the tiling diagnostic (`seam_metrics.py`). |
 | `abaqus/` | Abaqus pipeline: `.inp` generation and ODB extraction onto a regular grid. |
 | `legacy/` | Original DIC-to-Abaqus mesh generators, microscale and mesoscale, as first published. |

@@ -1,0 +1,9 @@
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+numba>=0.58
+joblib>=1.3
+# opencv-python is only needed if USE_CUSTOM_OPENCV = False in
+# 01_compute_dic_fields.py; the variational-refinement setters used there
+# require a local OpenCV build.
+opencv-python>=4.8
